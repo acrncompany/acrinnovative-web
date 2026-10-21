@@ -14,7 +14,8 @@
     "migrate:deploy": "npm run migrate:deploy --prefix backend",
     "seed:content": "npm run seed:content --prefix backend",
     "seed:admin": "npm run seed:admin --prefix backend",
-    "admin:reset-password": "npm run admin:reset-password --prefix backend"
+    "admin:reset-password": "npm run admin:reset-password --prefix backend",
+    "build:admin": "node scripts/build.js admin"
   },
   "devDependencies": {
     "concurrently": "10.0.6"

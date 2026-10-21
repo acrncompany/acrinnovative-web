@@ -35,6 +35,8 @@ export const paths = {
   backendRoot,
   views: path.join(backendRoot, 'views'),
   publicDir: path.join(backendRoot, 'public'),
+  /** The built Angular admin (copied here by scripts/build.js). */
+  adminDir: path.join(backendRoot, 'dist-admin'),
   /** Admin-uploaded images, served at /uploads. Must live outside the app folder in production. */
   uploadDir: path.resolve(backendRoot, process.env.UPLOAD_DIR || '../../acr-data/uploads'),
   /** Private files (CVs). Never served statically. */

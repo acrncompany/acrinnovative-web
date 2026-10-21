@@ -25,10 +25,10 @@ Rebuild of acrinnovative.com (old static site is in `reference/acrinnovative-sta
 - Favicon: generated from the logo by `src/common/favicon.ts` into `UPLOAD_DIR/_favicon` (favicon.ico 16+32, 32px PNG, 180 apple-touch, 192/512 PNG) and served at the root URLs + `/site.webmanifest` by `seo/favicon.controller.ts`. Seeded via `SiteSettings.faviconId`; `PATCH /api/admin/settings` with a new `faviconId` regenerates the set (`POST /api/admin/settings/favicon/regenerate` forces it). Head links carry `?v=<faviconId>`.
 - Title rules live in ONE place, `seo/seo-rules.ts`: custom meta title wins; home without one = brand only (never "Home — ..."); other pages = "Page — Brand". The admin's SEO preview (`POST /api/admin/seo/preview`) uses the same functions. og:title/twitter:title = the same title.
 - Password hashing: `bcryptjs` (pure JS, no native build on shared hosting). `sharp` is the only native dependency.
-- Rich text editor in the admin: Tiptap (`ngx-tiptap`); MIT, maintained, clean HTML.
+- Rich text editor in the admin: Tiptap used directly (`@tiptap/core` + starter-kit + image; no `ngx-tiptap` wrapper needed), see `frontend/src/app/shared/rich-text.ts`. MIT, maintained, clean HTML; limited to formats the server sanitiser allows.
 
 ## Pinned versions (exact, no ^)
-Nest 11.2.7 (core/common/platform-express), Prisma + @prisma/client 6.19.3, sharp 0.35.5, hbs 4.3.1, helmet 8.3.0, TypeScript 5.9.3, Node 22 locally (Hostinger: 20/22). Angular versions are pinned when `frontend/` is created in phase (d) and recorded here.
+Nest 11.2.7 (core/common/platform-express), Prisma + @prisma/client 6.19.3, sharp 0.35.5, hbs 4.3.1, helmet 8.3.0, TypeScript 5.9.3, Node 22 locally (Hostinger: 20/22). Frontend: Angular 21.2.25 (core/common/forms/router/platform-browser/compiler), Angular CLI + @angular/build 21.2.27, Angular Material + CDK 21.2.14, @tiptap/* 3.32.0, @fontsource/roboto + material-icons 5.3.0, RxJS 7.8.2, zoneless change detection (no zone.js).
 
 ## Auth and admin API (phase c)
 - Everything under `/api/admin` is protected by the GLOBAL `AdminGuard` (path-based, `auth/admin.guard.ts`); only `@Public()` routes (login, logout) are open. JWT in httpOnly, SameSite=strict cookie `acr_admin` (Secure in production, 12 h). The token carries a password fingerprint, so changing/resetting the password logs out all sessions.
@@ -38,8 +38,16 @@ Nest 11.2.7 (core/common/platform-express), Prisma + @prisma/client 6.19.3, shar
 - `npm run admin:reset-password` (interactive, or `-- --email x --password y`).
 - Windows gotcha: `npm run build` runs `prisma generate`, which fails with EPERM while a Node process (e.g. `start:dev`) holds the Prisma engine. Stop the server first.
 
+## Admin app (phase d, `frontend/`)
+- Angular 21, standalone + signals, zoneless: anything async that changes the view MUST go through a signal (plain fields won't re-render).
+- Almost everything is DATA-DRIVEN from `src/app/core/resources.ts`: each content type lists its API endpoint, form fields (type, validation, hints, show-if) and list layout. The generic `features/resource/resource-list.ts` and `resource-form.ts` build the screens, and `app.routes.ts` generates <base>, <base>/new, <base>/:id routes for every entry. To add a field, add it to the registry (and the backend DTO).
+- Custom screens: dashboard + landings (`features/landings.ts`), page editor with content blocks (`page-editor.ts`), inbox, picture library, account. Shared pieces in `shared/`: field renderer, image picker + upload (alt text required), icon picker (Font Awesome glyphs from the site's /public/fonts), rich text, SEO panel (live Google preview from `POST /api/admin/seo/preview`, 60/160 character counters).
+- UX rules: confirmation before every delete (`ConfirmService`), success/error snackbars (`NotifyService`, server messages turned into plain English), "unsaved changes" guard on every form (`core/unsaved.ts`, also warns on tab close), 401 → login page, phone layout (drawer menu, arrows instead of drag handles, no horizontal scrolling).
+- Auth cookie is httpOnly, so the app asks `/auth/me` on start. Dev: `npm run dev` (Nest on :3000 + `ng serve` on :4200 at http://localhost:4200/admin/, `proxy.conf.json` forwards /api, /uploads, /public so the cookie is same-origin). Production: `npm run build` (or `npm run build:admin`) copies the Angular build to `backend/dist-admin`, served by Nest at /admin (`src/admin-static/admin-static.ts`: hashed assets cached 1 year, index.html never cached, unknown /admin/* paths return index.html).
+- Angular build must not emit inline scripts/handlers (Content-Security-Policy): `inlineCritical` is disabled in angular.json, fonts are self-hosted via @fontsource, `.material-icons` rule is in styles.scss.
+
 ## Phases
-a) scaffold/schema/seed/public pages (done) · b) SEO (done) · c) auth + admin API (done) · d) Angular admin · e) contact/careers forms · f) build script + Hostinger notes. Stop after each phase for review.
+a) scaffold/schema/seed/public pages (done) · b) SEO (done) · c) auth + admin API (done) · d) Angular admin (done) · e) contact/careers forms · f) build script + Hostinger notes. Stop after each phase for review.
 
 ## Local dev notes
 - `backend/.env` (git-ignored) points at XAMPP MySQL `mysql://root:@localhost:3306/acr_innovative_web`.

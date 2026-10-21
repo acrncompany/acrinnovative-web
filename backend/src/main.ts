@@ -12,6 +12,7 @@ import * as fs from 'fs';
 import { AppModule } from './app.module';
 import { env, paths } from './config/env';
 import { registerHelpers } from './public/hbs-helpers';
+import { mountAdmin } from './admin-static/admin-static';
 import { noindexMiddleware, redirectMiddleware } from './seo/seo.middleware';
 
 async function bootstrap() {
@@ -29,7 +30,7 @@ async function bootstrap() {
           defaultSrc: ["'self'"],
           scriptSrc: ["'self'"],
           styleSrc: ["'self'", "'unsafe-inline'"],
-          imgSrc: ["'self'", 'data:'],
+          imgSrc: ["'self'", 'data:', 'blob:'], // blob: = preview of a picture chosen in the admin before upload
           fontSrc: ["'self'", 'data:'],
           connectSrc: ["'self'"],
           objectSrc: ["'none'"],
@@ -51,7 +52,9 @@ async function bootstrap() {
   app.use(noindexMiddleware);
   app.use(redirectMiddleware);
   app.use((req: Request, res: Response, next: NextFunction) => {
-    if (!req.path.startsWith('/public/') && !req.path.startsWith('/uploads/')) res.setHeader('Cache-Control', 'no-cache');
+    // /public, /uploads and the admin's hashed files set their own long cache headers.
+    const isAdminAsset = req.path.startsWith('/admin/') && /\.[a-z0-9]+$/i.test(req.path) && !req.path.endsWith('.html');
+    if (!req.path.startsWith('/public/') && !req.path.startsWith('/uploads/') && !isAdminAsset) res.setHeader('Cache-Control', 'no-cache');
     next();
   });
 
@@ -59,6 +62,8 @@ async function bootstrap() {
   fs.mkdirSync(paths.uploadDir, { recursive: true });
   app.useStaticAssets(paths.publicDir, { prefix: '/public/', maxAge: 7 * 24 * 3600 * 1000, index: false });
   app.useStaticAssets(paths.uploadDir, { prefix: '/uploads/', maxAge: 30 * 24 * 3600 * 1000, immutable: true, index: false });
+
+  mountAdmin(app); // Angular admin at /admin (+ SPA fallback)
 
   // Handlebars views: layouts/main.hbs wraps every page; partials live in views/partials.
   app.setBaseViewsDir(paths.views);

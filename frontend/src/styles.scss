@@ -1,0 +1,68 @@
+@use '@angular/material' as mat;
+
+html {
+  color-scheme: light;
+  @include mat.theme((
+    color: (
+      primary: mat.$green-palette,
+      tertiary: mat.$orange-palette,
+    ),
+    typography: Roboto,
+    density: 0,
+  ));
+}
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: Roboto, 'Helvetica Neue', sans-serif;
+  background: #f7f7f4;
+  color: #202124;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Website's Font Awesome (served by the site at /public/fonts) so the admin can show the same icons visitors see. */
+@font-face {
+  font-family: 'FAS';
+  font-style: normal;
+  font-weight: 900;
+  font-display: block;
+  src: url('/public/fonts/fa-solid-900.woff2') format('woff2');
+}
+
+/* Comfortable tap targets on phones */
+@media (max-width: 600px) {
+  .mat-mdc-button, .mat-mdc-outlined-button, .mat-mdc-unelevated-button { min-height: 44px; }
+  .mat-mdc-form-field { font-size: 16px; } /* 16px stops iOS from zooming into inputs */
+}
+
+/* Messages */
+.snack-success { --mat-snack-bar-button-color: #fff; --mdc-snackbar-container-color: #1b6b3a; --mdc-snackbar-supporting-text-color: #fff; --mat-snack-bar-container-color: #1b6b3a; --mat-snack-bar-supporting-text-color: #fff; }
+.snack-error { --mat-snack-bar-button-color: #fff; --mdc-snackbar-container-color: #b3261e; --mdc-snackbar-supporting-text-color: #fff; --mat-snack-bar-container-color: #b3261e; --mat-snack-bar-supporting-text-color: #fff; }
+
+/* Red confirm button for deleting */
+.danger-button { --mdc-filled-button-container-color: #b3261e; --mat-button-filled-container-color: #b3261e; --mdc-filled-button-label-text-color: #fff; --mat-button-filled-label-text-color: #fff; }
+
+a { color: #1565c0; }
+
+/* @fontsource only ships the @font-face; this is the standard rule that turns icon names (ligatures) into glyphs. */
+.material-icons {
+  font-family: 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Breathing room between stacked form fields (hint text of one field vs. label of the next) */
+app-field .mat-mdc-form-field,
+app-seo-panel .mat-mdc-form-field { margin-bottom: 10px; }
