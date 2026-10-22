@@ -3,7 +3,7 @@
  * exists yet, so it can never overwrite a changed password. To change a password later, use
  * `npm run admin:reset-password`.
  */
-import 'dotenv/config';
+import '../../src/config/load-env';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 

@@ -1,4 +1,5 @@
 <main>
+	{{#if form.sent}}<div class="uk-container uk-margin-top">{{> form-banner successText=b.form_success}}</div>{{else if form.message}}<div class="uk-container uk-margin-top">{{> form-banner}}</div>{{/if}}
 	<!-- section content begin -->
 	<div class="uk-section">
 		<div class="uk-container">
@@ -91,7 +92,7 @@
 					{{/if}}
 
 					<h2 class="uk-text-center uk-margin-large-top uk-margin-medium-bottom">{{b.form_title}}</h2>
-					{{> application-form jobId=""}}
+					{{> application-form jobId="" consent=b.consent_text button=b.form_button}}
 				</div>
 			</div>
 		</div>

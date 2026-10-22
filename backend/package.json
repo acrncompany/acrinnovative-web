@@ -12,11 +12,16 @@
     "start:dev": "nest start --watch",
     "prisma:generate": "prisma generate",
     "migrate:dev": "prisma migrate dev",
-    "migrate:deploy": "prisma migrate deploy",
+    "migrate:deploy": "node scripts/prisma-env.js migrate deploy",
     "seed:content": "tsx prisma/seed/initial-content.ts",
     "seed:admin": "tsx prisma/seed/admin-user.ts",
     "seed:build-assets": "tsx scripts/build-seed-assets.ts",
-    "admin:reset-password": "tsx src/cli/reset-admin-password.ts"
+    "admin:reset-password": "tsx src/cli/reset-admin-password.ts",
+    "mail:ethereal": "tsx src/cli/ethereal-account.ts",
+    "mail:test": "tsx src/cli/send-test-email.ts",
+    "doctor": "tsx src/cli/doctor.ts",
+    "backup": "node scripts/backup.js",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@nestjs/common": "11.2.7",
@@ -35,10 +40,13 @@
     "hbs": "4.3.1",
     "helmet": "8.3.0",
     "multer": "2.4.0",
+    "nodemailer": "10.1.7",
+    "prisma": "6.19.3",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
     "sanitize-html": "2.18.0",
-    "sharp": "0.35.5"
+    "sharp": "0.35.5",
+    "tsx": "4.23.15"
   },
   "devDependencies": {
     "@nestjs/cli": "11.0.24",
@@ -49,9 +57,8 @@
     "@types/hbs": "4.0.5",
     "@types/multer": "2.3.0",
     "@types/node": "22.20.5",
+    "@types/nodemailer": "8.0.2",
     "@types/sanitize-html": "2.16.2",
-    "prisma": "6.19.3",
-    "tsx": "4.23.15",
     "typescript": "5.9.3"
   }
 }

@@ -8,7 +8,7 @@
  * edited. SiteSettings is written LAST and doubles as the "already seeded" marker: if it exists,
  * the script exits immediately.
  */
-import 'dotenv/config';
+import '../../src/config/load-env';
 import { PrismaClient, Status } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';

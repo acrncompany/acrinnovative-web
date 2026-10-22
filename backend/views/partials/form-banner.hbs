@@ -1,0 +1,8 @@
+{{!-- Result of a form submission made WITHOUT JavaScript: thank-you after success, or "please check the fields" after problems.
+      (With JavaScript the page shows the result inside the form instead, see public/js/forms.js.) --}}
+{{#if form.sent}}
+<div class="uk-alert uk-alert-success in-form-banner" role="status"><p>{{#if successText}}{{successText}}{{else}}Thank you! We have received your submission.{{/if}}</p></div>
+{{/if}}
+{{#if form.message}}
+<div class="uk-alert uk-alert-danger in-form-banner" role="alert"><p>{{form.message}}</p></div>
+{{/if}}

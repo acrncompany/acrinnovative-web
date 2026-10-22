@@ -15,9 +15,14 @@
     "seed:content": "npm run seed:content --prefix backend",
     "seed:admin": "npm run seed:admin --prefix backend",
     "admin:reset-password": "npm run admin:reset-password --prefix backend",
-    "build:admin": "node scripts/build.js admin"
+    "build:admin": "node scripts/build.js admin",
+    "package": "node scripts/package.js",
+    "doctor": "npm run doctor --prefix backend",
+    "backup": "npm run backup --prefix backend",
+    "mail:test": "npm run mail:test --prefix backend"
   },
   "devDependencies": {
-    "concurrently": "10.0.6"
+    "concurrently": "10.0.6",
+    "jszip": "3.10.2"
   }
 }

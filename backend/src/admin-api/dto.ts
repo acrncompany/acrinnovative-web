@@ -197,6 +197,11 @@ export class MarkReadDto {
   @IsBoolean() isRead: boolean;
 }
 
+/** "Delete everything older than N months" (inbox clean-up). */
+export class PurgeDto {
+  @IsInt() @Min(1, { message: 'Choose at least 1 month.' }) @Max(120, { message: 'Choose 120 months or fewer.' }) months: number;
+}
+
 // ---- site settings
 export class UpdateSettingsDto {
   @IsOptional() @Required(200) siteName?: string;

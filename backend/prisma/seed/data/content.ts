@@ -343,11 +343,15 @@ export const blocks: BlockSeed[] = [
   b('careers', 'apply_note', 'How to apply: small print', 'We review all applications carefully and will reach out if your profile matches a current or upcoming requirement. We appreciate your interest in ACR.'),
   b('careers', 'jobs_title', 'Open roles: title', 'Current Openings'),
   b('careers', 'form_title', 'Application form: title', 'Open Application'),
+  b('careers', 'form_button', 'Application form: button text', 'Submit Application'),
+  b('careers', 'consent_text', 'Consent line under the application form', "We'll use your details and CV only to process your application and to contact you about it. We do not share them with anyone else."),
+  b('careers', 'form_success', 'Application sent confirmation', 'Thank you! Your application has been received. We will contact you if your profile matches a current or upcoming requirement.'),
   // ---- contact
   b('contact', 'hero_title', 'Page title (h1)', 'Get in Touch'),
   b('contact', 'hero_lead', 'Intro text', "Whether you have a specific requirement or simply want to explore how ACR can help, we're here. Fill in the form and we'll respond within one business day."),
   b('contact', 'email_title', 'Email heading', 'Email Us'),
   b('contact', 'form_button', 'Form button text', 'Send Message'),
+  b('contact', 'consent_text', 'Consent line under the form', "We'll use your details only to respond to your enquiry. We do not share them with anyone else."),
   b('contact', 'form_success', 'Message sent confirmation', 'Thank you! Your message has been sent. We will respond within one business day.'),
   // ---- 404
   b('404', 'title', 'Heading', 'Oops!'),

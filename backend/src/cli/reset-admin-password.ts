@@ -6,7 +6,7 @@
  *
  * Existing login cookies stop working after a reset (they are tied to the old password).
  */
-import 'dotenv/config';
+import '../config/load-env';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import * as readline from 'readline';

@@ -158,40 +158,22 @@ export class PublicController {
     });
   }
 
+  // The three form pages accept ?sent=1 / ?applied=1 (set after a successful no-JavaScript submission) to show the thank-you message.
   @Get('careers')
-  async careers(@Res() res: Response) {
-    const ctx = await this.pages.fixedPage('careers', '/careers');
-    const [perks, areas, jobs] = await Promise.all([
-      this.features('CAREER_PERK'),
-      this.features('CAREER_AREA'),
-      this.prisma.job.findMany({
-        where: { status: Status.PUBLISHED, OR: [{ closingDate: null }, { closingDate: { gte: new Date() } }] },
-        orderBy: { sortOrder: 'asc' },
-      }),
-    ]);
-    return res.render('pages/careers', { ...ctx, perks, areas, jobs });
+  async careers(@Query('applied') applied: string, @Res() res: Response) {
+    return res.render('pages/careers', { ...(await this.pages.careersPage()), form: { sent: applied === '1' } });
   }
 
   @Get('careers/:slug')
-  async job(@Param('slug') slug: string, @Res() res: Response) {
-    const j = await this.prisma.job.findFirst({
-      where: { slug, status: Status.PUBLISHED, OR: [{ closingDate: null }, { closingDate: { gte: new Date() } }] },
-      include: { ogImage: true },
-    });
-    if (!j) throw new NotFoundException();
-    const [site, b] = await Promise.all([this.pages.site(), this.pages.blocks('careers')]);
-    const seo = this.pages.seo(site, {
-      title: j.metaTitle, fallbackTitle: j.title,
-      description: j.metaDescription || truncate(stripHtml(j.description), 160),
-      path: `/careers/${j.slug}`, image: imageView(j.ogImage),
-    });
-    return res.render('pages/job', { site, b, seo, activePath: '/careers', job: { ...j, descriptionHtml: sanitizeRichText(j.description) } });
+  async job(@Param('slug') slug: string, @Query('applied') applied: string, @Res() res: Response) {
+    const ctx = await this.pages.jobPage(slug);
+    if (!ctx) throw new NotFoundException();
+    return res.render('pages/job', { ...ctx, form: { sent: applied === '1' } });
   }
 
   @Get('contact')
-  async contact(@Res() res: Response) {
-    const ctx = await this.pages.fixedPage('contact', '/contact');
-    return res.render('pages/contact', ctx);
+  async contact(@Query('sent') sent: string, @Res() res: Response) {
+    return res.render('pages/contact', { ...(await this.pages.contactPage()), form: { sent: sent === '1' } });
   }
 
   private features(group: any) {

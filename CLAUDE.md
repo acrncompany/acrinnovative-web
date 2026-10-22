@@ -5,7 +5,7 @@ Rebuild of acrinnovative.com (old static site is in `reference/acrinnovative-sta
 ## Layout
 - `backend/` NestJS + Prisma + Handlebars views + design assets (`backend/public`). Serves the public site (SSR), `/api`, `/uploads`, and the built admin at `/admin`.
 - `frontend/` Angular + Angular Material admin (base-href `/admin/`). Dev server proxies `/api` and `/uploads` to Nest (`proxy.conf.json`) so cookies work locally.
-- Root `package.json`: `dev` (both), `build` (frontend first, output copied into backend, then backend), `start`, `seed:content`, `seed:admin`, `admin:reset-password`.
+- Root `package.json`: `dev` (both), `build` (frontend first, output copied into backend, then backend), `build:admin`, `package` (release zip for the server), `start`, `seed:content`, `seed:admin`, `admin:reset-password`, `doctor`, `backup`, `mail:test`.
 
 ## Hard constraints (Hostinger Business shared hosting, Node app)
 - ONE Node process. No Redis, workers, Docker, root, or new paid services (ask before adding any, or before changing the stack).
@@ -28,13 +28,13 @@ Rebuild of acrinnovative.com (old static site is in `reference/acrinnovative-sta
 - Rich text editor in the admin: Tiptap used directly (`@tiptap/core` + starter-kit + image; no `ngx-tiptap` wrapper needed), see `frontend/src/app/shared/rich-text.ts`. MIT, maintained, clean HTML; limited to formats the server sanitiser allows.
 
 ## Pinned versions (exact, no ^)
-Nest 11.2.7 (core/common/platform-express), Prisma + @prisma/client 6.19.3, sharp 0.35.5, hbs 4.3.1, helmet 8.3.0, TypeScript 5.9.3, Node 22 locally (Hostinger: 20/22). Frontend: Angular 21.2.25 (core/common/forms/router/platform-browser/compiler), Angular CLI + @angular/build 21.2.27, Angular Material + CDK 21.2.14, @tiptap/* 3.32.0, @fontsource/roboto + material-icons 5.3.0, RxJS 7.8.2, zoneless change detection (no zone.js).
+Nest 11.2.7 (core/common/platform-express), Prisma + @prisma/client 6.19.3, sharp 0.35.5, hbs 4.3.1, helmet 8.3.0, TypeScript 5.9.3, Node 22 locally (Hostinger: 20/22). Frontend: Angular 21.2.25 (core/common/forms/router/platform-browser/compiler), Angular CLI + @angular/build 21.2.27, Angular Material + CDK 21.2.14, @tiptap/* 3.32.0, @fontsource/roboto + material-icons 5.3.0, RxJS 7.8.2, zoneless change detection (no zone.js). Also nodemailer 10.1.7 (backend), jszip 3.10.2 (root, packaging only).
 
 ## Auth and admin API (phase c)
 - Everything under `/api/admin` is protected by the GLOBAL `AdminGuard` (path-based, `auth/admin.guard.ts`); only `@Public()` routes (login, logout) are open. JWT in httpOnly, SameSite=strict cookie `acr_admin` (Secure in production, 12 h). The token carries a password fingerprint, so changing/resetting the password logs out all sessions.
 - Login is rate-limited 5/min/IP (ThrottlerGuard opt-in per route; the public forms in phase e do the same). `TRUST_PROXY` makes that the real client IP.
 - Most resources are one config entry in `admin-api/resources.ts` using the generic `crud.ts` factory (list/get/create/update/delete/`PUT /reorder`, filters, slug generation, rich-text sanitising). DTOs in `admin-api/dto.ts` (trimmed strings, link URLs can't be `javascript:`). Special controllers: media (usage + delete protection), settings, inbox (+ authenticated CV download), dashboard, SEO preview.
-- Inboxes are read-only by design (list, open, mark read/unread; no delete). Fixed pages and content blocks can be edited, not created/deleted.
+- Inbox (messages + applications): list, open, mark read/unread, DELETE one (applications also delete their CV file from PRIVATE_DIR; only the bare file name from the DB is used, so no path tricks), and a bulk "delete items older than N months" (`GET .../purge/count?months=` previews the number, `POST .../purge {months}` deletes; 1-120 whole months). Fixed pages and content blocks can be edited, not created/deleted.
 - `npm run admin:reset-password` (interactive, or `-- --email x --password y`).
 - Windows gotcha: `npm run build` runs `prisma generate`, which fails with EPERM while a Node process (e.g. `start:dev`) holds the Prisma engine. Stop the server first.
 
@@ -46,8 +46,27 @@ Nest 11.2.7 (core/common/platform-express), Prisma + @prisma/client 6.19.3, shar
 - Auth cookie is httpOnly, so the app asks `/auth/me` on start. Dev: `npm run dev` (Nest on :3000 + `ng serve` on :4200 at http://localhost:4200/admin/, `proxy.conf.json` forwards /api, /uploads, /public so the cookie is same-origin). Production: `npm run build` (or `npm run build:admin`) copies the Angular build to `backend/dist-admin`, served by Nest at /admin (`src/admin-static/admin-static.ts`: hashed assets cached 1 year, index.html never cached, unknown /admin/* paths return index.html).
 - Angular build must not emit inline scripts/handlers (Content-Security-Policy): `inlineCritical` is disabled in angular.json, fonts are self-hosted via @fontsource, `.material-icons` rule is in styles.scss.
 
+## Public forms (phase e, `backend/src/forms/`)
+- Endpoints: `POST /api/public/contact` (urlencoded) and `POST /api/public/applications` (multipart, file field `cv`). Each works WITHOUT JavaScript (browser post; success = 303 redirect to `/contact?sent=1` / `/careers[/slug]?applied=1`; problems = the same page re-rendered with status 400, the visitor's text kept, errors beside the fields) and WITH it (`public/js/forms.js` posts in the background with `Accept: application/json` and gets `{ok, message, errors}`). The page templates are shared: `views/pages/contact.hbs`, `partials/application-form.hbs`, `partials/form-banner.hbs`; page contexts come from `PagesService` (`contactPage/careersPage/jobPage`) so the form handler can re-render them.
+- Protection: per-IP rate limit (contact 5/min, applications 3/min; 429 with a friendly message/page), honeypot field `website` (bots get a fake success, nothing saved), DTO validation with visitor-friendly messages (`form-dto.ts`; line breaks stripped from single-line fields; empty optional fields count as absent), CV limit 5 MB.
+- CV rules: PDF / DOC / DOCX only, decided by the file's CONTENT (`common/document-type.ts`), never the name or browser mime type. Stored in `PRIVATE_DIR` under a random name (`<timestamp>-<24 hex>.<ext>`), original name kept only as text in the DB; downloadable only via the admin endpoint.
+- Consent lines are editable page texts (blocks `contact.consent_text`, `careers.consent_text`); templates have a built-in fallback, so DBs seeded before phase e still show them. Existing DBs do NOT get the other new texts (`careers.form_success`, `careers.form_button`) because `seed:content` never re-runs; fallbacks cover them.
+- Email: `mailer.service.ts` (nodemailer) sends the alert to `SiteSettings.notificationEmail`; Reply-To = the visitor. The CV is NOT attached (link to the admin instead). Sending is fire-and-forget and NEVER breaks a submission: failures (wrong password, server down, SMTP not configured) are only logged. SMTP is configured via `SMTP_HOST/PORT/SECURE/USER/PASS/FROM` (Hostinger mailbox: smtp.hostinger.com:465 secure; Gmail: smtp.gmail.com:465 secure + App Password; 587 + SMTP_SECURE=false uses STARTTLS).
+- Local testing without real mail: `npm run mail:ethereal -- --write` creates a fake Ethereal mailbox and writes SMTP_* into backend/.env (a preview link is printed in the server log for every email). `npm run mail:test [-- --to a@b.c]` sends one test email with the current settings (use it on the server too).
+
+## Spam protection decision
+- No CAPTCHA for now (honeypot + per-IP rate limits only). **If spam appears, the planned option is Cloudflare Turnstile** (free; ask before adding any third-party service).
+
+## Deployment (phase f): see DEPLOY.md (the step-by-step guide for the founder/owner)
+- `npm run package` -> `scripts/package.js` builds everything and writes `release/acr-site-<date>.zip` (backend dist + dist-admin + views + public + prisma + src + scripts/backup.js + package files; NO node_modules, NO .env; the zip is built in Node with jszip so it works on any OS). The server runs `npm install --omit=dev` itself (sharp/Prisma get the server's own binaries). `postinstall` runs `prisma generate`; `prisma` and `tsx` are runtime dependencies because the server runs migrations, seeds and maintenance commands (TypeScript in `src/` run with tsx).
+- Settings: real env vars > file named by `ENV_FILE` (server: /home/<user>/acr-data/.env, OUTSIDE the app folder) > backend/.env (dev). All loading goes through `src/config/load-env.ts` (imported first by env.ts, seeds, CLIs); `scripts/backup.js` and `scripts/prisma-env.js` replicate it. On Hostinger only `NODE_ENV` and `ENV_FILE` are entered in the panel. Use `npm run migrate:deploy` (not bare prisma) so DATABASE_URL is found.
+- `env.ts` refuses to start in production when UPLOAD_DIR / PRIVATE_DIR are missing, inside the app folder, inside each other, or PRIVATE_DIR inside public/ or dist-admin/; JWT_SECRET must be >= 32 chars; non-https SITE_URL only warns (admin cookie is Secure so login needs https). `NOINDEX_SITE=true` = X-Robots-Tag noindex on every response + robots.txt `Disallow: /` (for the test address; remove when live).
+- `npm run doctor [-- --mail]` (src/cli/doctor.ts) checks Node, settings, data folders, built files, DB + migrations + seed + admin, sharp, SMTP, backups, and explains fixes. `npm run backup` (scripts/backup.js) -> BACKUP_DIR/acr-backup-<date>.tar.gz (mysqldump via MYSQL_PWD env + uploads + private CVs; keeps BACKUP_KEEP_DAYS, newest 3 always). Restore steps are in DEPLOY.md.
+- Windows gotcha for scripts using GNU tar (Git Bash): pass RELATIVE archive names and forward-slash `-C` paths ("C:" is read as a remote host).
+- Not verifiable here (needs the real hPanel): ZIP upload + entry file, whether the panel runs npm install, SSH node version, cron, domain attach. DEPLOY.md section 14 lists them.
+
 ## Phases
-a) scaffold/schema/seed/public pages (done) · b) SEO (done) · c) auth + admin API (done) · d) Angular admin (done) · e) contact/careers forms · f) build script + Hostinger notes. Stop after each phase for review.
+a) scaffold/schema/seed/public pages (done) · b) SEO (done) · c) auth + admin API (done) · d) Angular admin (done) · e) contact/careers forms (done) · f) build/package script + DEPLOY.md + doctor/backup (done). Stop after each phase for review.
 
 ## Local dev notes
 - `backend/.env` (git-ignored) points at XAMPP MySQL `mysql://root:@localhost:3306/acr_innovative_web`.

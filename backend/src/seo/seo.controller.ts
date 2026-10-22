@@ -14,6 +14,8 @@ export class SeoController {
   @Header('Content-Type', 'text/plain; charset=utf-8')
   @Header('Cache-Control', 'public, max-age=3600')
   robots() {
+    // On a test/staging address (NOINDEX_SITE=true) everything is closed to search engines.
+    if (env.noindexSite) return ['User-agent: *', 'Disallow: /', ''].join('\n');
     return [
       'User-agent: *',
       'Allow: /',

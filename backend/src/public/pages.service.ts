@@ -107,6 +107,45 @@ export class PagesService {
     return { site, page, b, seo, activePath: path };
   }
 
+  // ---- pages that contain a form (also re-rendered by the form handlers when a submission has problems)
+  contactPage() {
+    return this.fixedPage('contact', '/contact');
+  }
+
+  async careersPage() {
+    const ctx = await this.fixedPage('careers', '/careers');
+    const [perks, areas, jobs] = await Promise.all([
+      this.prisma.featureItem.findMany({ where: { group: 'CAREER_PERK', status: Status.PUBLISHED }, orderBy: { sortOrder: 'asc' } }),
+      this.prisma.featureItem.findMany({ where: { group: 'CAREER_AREA', status: Status.PUBLISHED }, orderBy: { sortOrder: 'asc' } }),
+      this.openJobs(),
+    ]);
+    return { ...ctx, perks, areas, jobs };
+  }
+
+  /** Published jobs whose closing date has not passed. */
+  openJobs() {
+    return this.prisma.job.findMany({
+      where: { status: Status.PUBLISHED, OR: [{ closingDate: null }, { closingDate: { gte: new Date() } }] },
+      orderBy: { sortOrder: 'asc' },
+    });
+  }
+
+  /** @returns null when the job does not exist, is a draft or has closed. */
+  async jobPage(slug: string) {
+    const j = await this.prisma.job.findFirst({
+      where: { slug, status: Status.PUBLISHED, OR: [{ closingDate: null }, { closingDate: { gte: new Date() } }] },
+      include: { ogImage: true },
+    });
+    if (!j) return null;
+    const [site, b] = await Promise.all([this.site(), this.blocks('careers')]);
+    const seo = this.seo(site, {
+      title: j.metaTitle, fallbackTitle: j.title,
+      description: j.metaDescription || truncate(stripHtml(j.description), 160),
+      path: `/careers/${j.slug}`, image: imageView(j.ogImage),
+    });
+    return { site, b, seo, activePath: '/careers', job: { ...j, descriptionHtml: sanitizeRichText(j.description) } };
+  }
+
   // ---- reusable queries
   publishedPostWhere() {
     return { status: Status.PUBLISHED, publishedAt: { lte: new Date() } };

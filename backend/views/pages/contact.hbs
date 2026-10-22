@@ -2,6 +2,7 @@
 	<!-- section content begin -->
 	<div class="uk-section">
 		<div class="uk-container">
+			{{> form-banner successText=b.form_success}}
 			<div class="uk-grid">
 				<div class="uk-width-3-5@m">
 					<h1 class="uk-margin-remove-bottom">{{hl b.hero_title}}</h1>
@@ -23,36 +24,56 @@
 						</div>
 						<div class="uk-width-2-3@m">
 							<div class="uk-margin-medium-left in-margin-remove-left@s">
-								<form id="contact-form" class="uk-form uk-grid-small" data-uk-grid method="post" action="/api/public/contact" data-success="{{b.form_success}}">
-									<div class="uk-width-1-2@s uk-inline">
-										<span class="uk-form-icon fas fa-user fa-sm"></span>
-										<input class="uk-input uk-border-rounded" id="name" name="name" type="text" placeholder="Full name" aria-label="Full name" required maxlength="150">
+								{{!-- Works without JavaScript (normal post) and with it (public/js/forms.js sends it in the background). --}}
+								<form id="contact-form" class="uk-form uk-grid-small" data-uk-grid data-enhance method="post" action="/api/public/contact" data-sending="Sending…">
+									<div class="uk-width-1-2@s">
+										<div class="uk-inline uk-width-1-1">
+											<span class="uk-form-icon fas fa-user fa-sm"></span>
+											<input class="uk-input uk-border-rounded{{#if form.errors.name}} uk-form-danger{{/if}}" id="name" name="name" type="text" placeholder="Full name" aria-label="Full name" required maxlength="150" autocomplete="name" value="{{form.values.name}}">
+										</div>
+										<span class="field-error" data-error-for="name" role="alert">{{form.errors.name}}</span>
 									</div>
-									<div class="uk-width-1-2@s uk-inline">
-										<span class="uk-form-icon fas fa-envelope fa-sm"></span>
-										<input class="uk-input uk-border-rounded" id="email" name="email" type="email" placeholder="Email address" aria-label="Email address" required maxlength="200">
+									<div class="uk-width-1-2@s">
+										<div class="uk-inline uk-width-1-1">
+											<span class="uk-form-icon fas fa-envelope fa-sm"></span>
+											<input class="uk-input uk-border-rounded{{#if form.errors.email}} uk-form-danger{{/if}}" id="email" name="email" type="email" placeholder="Email address" aria-label="Email address" required maxlength="200" autocomplete="email" value="{{form.values.email}}">
+										</div>
+										<span class="field-error" data-error-for="email" role="alert">{{form.errors.email}}</span>
 									</div>
-									<div class="uk-width-1-2@s uk-inline">
-										<span class="uk-form-icon fas fa-phone fa-sm"></span>
-										<input class="uk-input uk-border-rounded" id="phone" name="phone" type="tel" placeholder="Phone number (optional)" aria-label="Phone number" maxlength="50">
+									<div class="uk-width-1-2@s">
+										<div class="uk-inline uk-width-1-1">
+											<span class="uk-form-icon fas fa-phone fa-sm"></span>
+											<input class="uk-input uk-border-rounded{{#if form.errors.phone}} uk-form-danger{{/if}}" id="phone" name="phone" type="tel" placeholder="Phone number (optional)" aria-label="Phone number" maxlength="30" autocomplete="tel" value="{{form.values.phone}}">
+										</div>
+										<span class="field-error" data-error-for="phone" role="alert">{{form.errors.phone}}</span>
 									</div>
-									<div class="uk-width-1-2@s uk-inline">
-										<span class="uk-form-icon fas fa-building fa-sm"></span>
-										<input class="uk-input uk-border-rounded" id="company" name="company" type="text" placeholder="Company name (optional)" aria-label="Company name" maxlength="200">
-									</div>
-									<div class="uk-width-1-1 uk-inline">
-										<span class="uk-form-icon fas fa-pen fa-sm"></span>
-										<input class="uk-input uk-border-rounded" id="subject" name="subject" type="text" placeholder="Subject" aria-label="Subject" required maxlength="250">
+									<div class="uk-width-1-2@s">
+										<div class="uk-inline uk-width-1-1">
+											<span class="uk-form-icon fas fa-building fa-sm"></span>
+											<input class="uk-input uk-border-rounded{{#if form.errors.company}} uk-form-danger{{/if}}" id="company" name="company" type="text" placeholder="Company name (optional)" aria-label="Company name" maxlength="200" autocomplete="organization" value="{{form.values.company}}">
+										</div>
+										<span class="field-error" data-error-for="company" role="alert">{{form.errors.company}}</span>
 									</div>
 									<div class="uk-width-1-1">
-										<textarea class="uk-textarea uk-border-rounded" id="message" name="message" rows="6" placeholder="Tell us about your requirement..." aria-label="Message" required maxlength="5000"></textarea>
+										<div class="uk-inline uk-width-1-1">
+											<span class="uk-form-icon fas fa-pen fa-sm"></span>
+											<input class="uk-input uk-border-rounded{{#if form.errors.subject}} uk-form-danger{{/if}}" id="subject" name="subject" type="text" placeholder="Subject" aria-label="Subject" required maxlength="250" value="{{form.values.subject}}">
+										</div>
+										<span class="field-error" data-error-for="subject" role="alert">{{form.errors.subject}}</span>
+									</div>
+									<div class="uk-width-1-1">
+										<textarea class="uk-textarea uk-border-rounded{{#if form.errors.message}} uk-form-danger{{/if}}" id="message" name="message" rows="6" placeholder="Tell us about your requirement..." aria-label="Message" required maxlength="5000">{{form.values.message}}</textarea>
+										<span class="field-error" data-error-for="message" role="alert">{{form.errors.message}}</span>
 									</div>
 									<!-- honeypot: real visitors never see or fill this -->
-									<div class="in-form-honeypot" aria-hidden="true"><input type="text" name="website" tabindex="-1" autocomplete="off"></div>
+									<div class="in-form-honeypot" aria-hidden="true"><label>Leave this empty <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
 									<div class="uk-width-1-1">
-										<button class="uk-button uk-button-primary uk-border-rounded uk-align-right" id="sendemail" type="submit" name="submit">{{b.form_button}}</button>
+										<p class="uk-text-small uk-text-muted uk-margin-small-bottom in-consent">{{#if b.consent_text}}{{b.consent_text}}{{else}}We'll use your details only to respond to your enquiry.{{/if}}</p>
+										<div class="form-status" role="status" aria-live="polite" tabindex="-1"></div>
+										<button class="uk-button uk-button-primary uk-border-rounded uk-align-right" id="contact-submit" type="submit">{{b.form_button}}</button>
 									</div>
 								</form>
+								<script src="/public/js/forms.js" defer></script>
 							</div>
 						</div>
 					</div>

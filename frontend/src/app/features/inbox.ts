@@ -5,10 +5,14 @@ import { MatBadgeModule } from '@angular/material/badge';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { firstValueFrom } from 'rxjs';
 import { Api } from '../core/api.service';
+import { ConfirmService } from '../core/confirm.service';
 import { CountsService } from '../core/counts.service';
 import { NotifyService } from '../core/notify.service';
 import { PageHeader } from '../shared/page-header';
@@ -16,12 +20,107 @@ import { PageHeader } from '../shared/page-header';
 type Kind = 'messages' | 'applications';
 const ENDPOINT: Record<Kind, string> = { messages: '/contact-messages', applications: '/applications' };
 
+/** "Delete items older than N months": shows how many would go, then asks for the final click. */
+@Component({
+  selector: 'app-purge-dialog',
+  imports: [MatButtonModule, MatDialogModule, MatFormFieldModule, MatSelectModule, MatProgressSpinnerModule],
+  template: `
+    <h2 mat-dialog-title>Delete old {{ data.kind === 'messages' ? 'messages' : 'job applications' }}</h2>
+    <mat-dialog-content>
+      <p>
+        Removes everything received before the date below. It cannot be undone.
+        @if (data.kind === 'applications') {
+          <strong>The CV files are deleted too.</strong>
+        }
+      </p>
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>Delete items older than</mat-label>
+        <mat-select [value]="months()" (selectionChange)="choose($event.value)">
+          @for (m of options; track m) {
+            <mat-option [value]="m">{{ m === 1 ? '1 month' : m + ' months' }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <p class="result" aria-live="polite">
+        @if (loading()) {
+          <mat-spinner diameter="18" /> Counting…
+        } @else if (count() === 0) {
+          Nothing is that old, so there is nothing to delete.
+        } @else {
+          <span><strong>{{ count() }}</strong> {{ count() === 1 ? 'item' : 'items' }} received before <strong>{{ before() }}</strong> will be permanently deleted.</span>
+        }
+      </p>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button type="button" mat-dialog-close>Cancel</button>
+      <button mat-flat-button type="button" class="danger-button" (click)="confirm()" [disabled]="loading() || busy() || count() === 0">
+        Delete {{ count() || '' }} {{ count() === 1 ? 'item' : 'items' }}
+      </button>
+    </mat-dialog-actions>
+  `,
+  styles: `
+    .full { width: 100%; }
+    .result { display: flex; align-items: center; gap: 8px; margin: 0; }
+  `,
+})
+export class PurgeDialog implements OnInit {
+  readonly data = inject<{ kind: Kind }>(MAT_DIALOG_DATA);
+  private readonly ref = inject<MatDialogRef<PurgeDialog, number>>(MatDialogRef);
+  private readonly api = inject(Api);
+  private readonly notify = inject(NotifyService);
+  readonly options = [1, 3, 6, 12, 24, 36];
+  readonly months = signal(12);
+  readonly count = signal(0);
+  readonly loading = signal(true);
+  readonly busy = signal(false);
+  readonly before = computed(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - this.months());
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  });
+
+  ngOnInit() {
+    this.refresh();
+  }
+
+  choose(m: number) {
+    this.months.set(m);
+    this.refresh();
+  }
+
+  private async refresh() {
+    this.loading.set(true);
+    try {
+      const r = await firstValueFrom(this.api.get<{ count: number }>(`${ENDPOINT[this.data.kind]}/purge/count`, { months: this.months() }));
+      this.count.set(r.count);
+    } catch (e) {
+      this.notify.error(e);
+      this.count.set(0);
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  async confirm() {
+    this.busy.set(true);
+    try {
+      const r = await firstValueFrom(this.api.post<{ deleted: number }>(`${ENDPOINT[this.data.kind]}/purge`, { months: this.months() }));
+      this.ref.close(r.deleted);
+    } catch (e) {
+      this.notify.error(e);
+      this.busy.set(false);
+    }
+  }
+}
+
 /** Inbox list. One component for both tabs (contact messages and job applications). */
 @Component({
   selector: 'app-inbox-list',
   imports: [DatePipe, RouterLink, MatBadgeModule, MatButtonModule, MatButtonToggleModule, MatCardModule, MatIconModule, MatProgressSpinnerModule, PageHeader],
   template: `
-    <app-page-header title="Inbox" help="Messages from the Contact form and job applications from the website." />
+    <app-page-header title="Inbox" help="Messages from the Contact form and job applications from the website.">
+      <button mat-stroked-button type="button" (click)="purge()"><mat-icon>auto_delete</mat-icon> Delete old items…</button>
+    </app-page-header>
 
     <div class="tabs">
       <a mat-stroked-button routerLink="/inbox/messages" [class.on]="kind === 'messages'"
@@ -86,6 +185,7 @@ export class InboxList implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly api = inject(Api);
   private readonly notify = inject(NotifyService);
+  private readonly dialog = inject(MatDialog);
   readonly counts = inject(CountsService);
 
   kind: Kind = 'messages';
@@ -97,6 +197,15 @@ export class InboxList implements OnInit {
 
   ngOnInit() {
     this.kind = this.route.snapshot.data['kind'];
+    this.load(true);
+  }
+
+  async purge() {
+    const deleted = await firstValueFrom(
+      this.dialog.open<PurgeDialog, { kind: Kind }, number>(PurgeDialog, { data: { kind: this.kind }, width: '460px', maxWidth: '96vw' }).afterClosed(),
+    );
+    if (deleted === undefined) return; // cancelled
+    this.notify.success(`${deleted} ${deleted === 1 ? 'item' : 'items'} deleted`);
     this.load(true);
   }
 
@@ -134,6 +243,7 @@ export class InboxList implements OnInit {
     @if (item(); as m) {
       <app-page-header [title]="kind === 'messages' ? m.subject : m.name" [back]="'/inbox/' + kind" [backLabel]="kind === 'messages' ? 'Messages' : 'Job applications'">
         <button mat-stroked-button type="button" (click)="toggleRead()"><mat-icon>{{ m.isRead ? 'mark_email_unread' : 'drafts' }}</mat-icon> {{ m.isRead ? 'Mark as unread' : 'Mark as read' }}</button>
+        <button mat-stroked-button type="button" class="danger-outline" (click)="remove()"><mat-icon>delete</mat-icon> Delete</button>
       </app-page-header>
       <mat-card appearance="outlined">
         <mat-card-content>
@@ -169,6 +279,7 @@ export class InboxList implements OnInit {
     h2 { font-size: 16px; font-weight: 500; margin: 16px 0 6px; }
     .body { white-space: pre-wrap; background: #f7f7f4; border-radius: 8px; padding: 14px; margin: 0 0 16px; overflow-wrap: anywhere; }
     .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .danger-outline { color: #b3261e; }
   `,
 })
 export class InboxDetail implements OnInit {
@@ -177,6 +288,7 @@ export class InboxDetail implements OnInit {
   private readonly api = inject(Api);
   private readonly notify = inject(NotifyService);
   private readonly counts = inject(CountsService);
+  private readonly confirm = inject(ConfirmService);
 
   kind: Kind = 'messages';
   readonly item = signal<any | null>(null);
@@ -196,6 +308,28 @@ export class InboxDetail implements OnInit {
     } catch (e) {
       this.notify.error(e);
       this.router.navigateByUrl('/inbox/' + this.kind);
+    }
+  }
+
+  async remove() {
+    const m = this.item()!;
+    const isMessage = this.kind === 'messages';
+    const ok = await this.confirm.ask({
+      title: isMessage ? 'Delete this message?' : 'Delete this application?',
+      message: isMessage
+        ? `The message “${m.subject}” from ${m.name} will be permanently deleted. This cannot be undone.`
+        : `The application from ${m.name} will be permanently deleted, together with the CV file. This cannot be undone.`,
+      confirmText: 'Delete',
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await firstValueFrom(this.api.delete(`${this.endpoint()}/${m.id}`));
+      this.counts.refresh();
+      this.notify.success('Deleted');
+      await this.router.navigateByUrl('/inbox/' + this.kind);
+    } catch (e) {
+      this.notify.error(e);
     }
   }
 

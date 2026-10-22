@@ -19,6 +19,9 @@ export class PublicErrorFilter implements ExceptionFilter {
     const status = exception instanceof HttpException ? exception.getStatus() : 500;
     if (status >= 500) this.logger.error(exception);
 
+    // Problems before a form handler runs (rate limit, file too large...): a friendly message, as JSON for the script or as a page.
+    if (req.path.startsWith('/api/public')) return this.formProblem(req, res, status);
+
     if (isApi) {
       const body = exception instanceof HttpException
         ? exception.getResponse()
@@ -36,6 +39,23 @@ export class PublicErrorFilter implements ExceptionFilter {
       return res.status(code).render('pages/404', { site, b, seo, bare: true, noindex: true, code });
     } catch {
       return res.status(code).send(code === 404 ? 'Page not found' : 'Server error');
+    }
+  }
+
+  private async formProblem(req: Request, res: Response, status: number) {
+    const message =
+      status === 429 ? 'Too many attempts from your connection. Please wait a minute and try again.'
+      : status === 413 ? 'That file is too large. Please attach a file of up to 5 MB.'
+      : status >= 500 ? 'Sorry, something went wrong on our side. Please try again in a moment.'
+      : 'We could not process that submission. Please go back and try again.';
+    if (req.accepts(['html', 'json']) === 'json') return res.status(status).json({ ok: false, message });
+    const backUrl = req.path.includes('applications') ? '/careers' : '/contact';
+    try {
+      const site = await this.pages.site();
+      const seo = this.pages.seo(site, { title: `Something went wrong — ${site.siteName}`, path: req.path });
+      return res.status(status).render('pages/message', { site, seo, noindex: true, activePath: backUrl, heading: 'We could not send that', message, backUrl });
+    } catch {
+      return res.status(status).send(message);
     }
   }
 }

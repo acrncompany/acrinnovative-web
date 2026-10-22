@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
+import { env } from '../config/env';
 import { redirects } from './redirects';
 
 // Lower-cased lookup built once at startup.
@@ -16,7 +17,9 @@ export function redirectMiddleware(req: Request, res: Response, next: NextFuncti
 
 /** Keep the admin app and the JSON API out of search engines. */
 export function noindexMiddleware(req: Request, res: Response, next: NextFunction) {
-  if (req.path === '/admin' || req.path.startsWith('/admin/') || req.path.startsWith('/api/')) {
+  // NOINDEX_SITE=true (test / staging address): the WHOLE site asks search engines to stay away.
+  if (env.noindexSite) res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+  else if (req.path === '/admin' || req.path.startsWith('/admin/') || req.path.startsWith('/api/')) {
     res.setHeader('X-Robots-Tag', 'noindex, nofollow');
   }
   next();

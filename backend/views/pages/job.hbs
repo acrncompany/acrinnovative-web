@@ -1,4 +1,5 @@
 <main>
+	{{#if form.sent}}<div class="uk-container uk-margin-top">{{> form-banner successText=b.form_success}}</div>{{else if form.message}}<div class="uk-container uk-margin-top">{{> form-banner}}</div>{{/if}}
 	<div class="uk-section">
 		<div class="uk-container">
 			<div class="uk-grid uk-flex uk-flex-center">
@@ -8,7 +9,7 @@
 					<div class="in-richtext uk-margin-medium-top">{{{job.descriptionHtml}}}</div>
 
 					<h2 class="uk-h3 uk-margin-large-top uk-margin-medium-bottom">Apply for this role</h2>
-					{{> application-form jobId=job.id}}
+					{{> application-form jobId=job.id consent=b.consent_text button=b.form_button}}
 
 					<p class="uk-margin-medium-top"><a href="/careers" class="uk-link-muted">← All careers</a></p>
 				</div>
